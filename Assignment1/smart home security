@@ -1,0 +1,193 @@
+#include <Servo.h>
+#include <Keypad.h>
+// include the library code:
+#include <LiquidCrystal.h>
+
+const byte rows=4; //initializing 4 rows 
+const byte cols=3; //initializing 3 columns
+
+// initialize the library by associating any needed LCD interface pin
+// with the arduino pin number it is connected to
+const int rs = 7, en = 6, d4 = 5, d5 = 4, d6 = 3, d7 = 2;
+LiquidCrystal lcd(rs, en, d4, d5, d6, d7);//defines pin numbers for LCD
+char key[rows][cols]={
+{'1','2','3'},
+{'4','5','6'},
+{'7','8','9'},
+{'*','0','#'}
+};
+byte rowPins[rows]={A1,A2,A3,A4};//defines pin number for rows
+byte colPins[cols]={0,1,12}; //defines pin numbers for columns
+Keypad keypad= Keypad(makeKeymap(key),rowPins,colPins,rows,cols);
+
+int counter = 0;
+int buzzer = 10;
+int gasSensor=A0;
+int sensorThresh= 400;
+String password = "4567";//declaring the password as 4567
+String pressed = ""; // checks the pressed password
+Servo servo1;//defining servo motor
+int currentposition=1;
+
+int PIRsensor = 0;
+
+int tmpPin = A5;
+int reading = 0;
+float vout = 0;
+float temperature = 0;
+int AC =11;
+int idealTemperature=25;
+
+
+void setup() {
+  pinMode (buzzer,OUTPUT);
+  pinMode (gasSensor,INPUT);
+  servo1.attach(13);//defines pin number for sevo
+  lcd.begin(16,2); //specifying the LCD size in columns and rows
+  
+  pinMode(8, INPUT);
+  pinMode(AC, OUTPUT);
+  pinMode(9, OUTPUT);
+  pinMode(tmpPin, INPUT);
+  
+  servo1.write(0);//Door closed initially
+  
+}
+
+void loop() {
+   reading = analogRead(tmpPin);
+   vout = reading*5.0/1023;
+   temperature = (vout-0.5)*100;
+   if(temperature>idealTemperature)
+   {digitalWrite(AC, HIGH);
+   lcd.clear();
+   lcd.setCursor(0,0);
+   lcd.print("AC is turned on");
+   delay(1000);
+   lcd.clear();}
+   else
+   {digitalWrite(AC, LOW);}
+  
+  
+  // read the state of the sensor/digital input
+  PIRsensor = digitalRead(8);
+  // check if sensor pin is HIGH. if it is, set the
+  // LED on.
+ 
+  if (PIRsensor == HIGH) {
+    
+    digitalWrite(9, HIGH);
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("Motion detected!");
+    delay(1000);
+    lcd.clear();
+  } else {
+    digitalWrite(9, LOW);
+  }
+ 
+  delay(10); // Delay a little bit to improve simulation performance
+  
+  
+  
+  char key = keypad.getKey();//read key pressed on keypad and assign it to the variable char key
+  if(int(key)!=0) //checks whether any input is pressed
+  {
+    if(key=='0'){
+      reset();
+      initializeLcd();
+    }
+    else if (key=='*')//check if key is equal to *
+    {
+    checkPassword();
+    }
+    else if(key=='#')//check if key is equal to #
+    {
+    lockDoor();//user-defined function
+    }
+    else
+    {
+      pressed.concat(key);//string concatination
+       lcd.setCursor(currentposition,1);
+       lcd.print("*");//prints * on LCD display
+          currentposition++;
+     if(currentposition==5)
+       currentposition=1;
+    }
+    
+  }
+  int analogValue = analogRead (gasSensor);
+  if (analogValue>sensorThresh )
+  {tone(buzzer,1000,6000);
+   lcd.clear();
+   lcd.setCursor(0,0);
+   lcd.print("ALERT");
+   lcd.setCursor(0,1);
+   lcd.print("Gas detected");
+   delay(1000);
+   lcd.clear();
+   lcd.setCursor(0,1);
+   lcd.print("EVACUATE");
+   delay(1000);
+   lcd.clear();
+  }
+  else
+  {
+   noTone(buzzer);
+   
+  }
+}
+
+ void initializeLcd(){
+   lcd.clear();
+   lcd.print("PASSWORD:");
+   lcd.setCursor(1,1);//setting cursor to row 2,column 2
+   servo1.write(0);//Door closed initially
+  }
+
+
+void checkPassword()
+{
+  if (pressed==password){//check if the pressed key matches with the actual password
+  lcd.clear();
+  lcd.setCursor(0,0);
+    lcd.print("Access Granted!");
+    servo1.write(90); //Door opened
+  }
+  else{
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("Access denied!");
+  servo1.write(180); //Door closed
+  }
+}
+void lockDoor(){
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("Door locked");
+  servo1.write(180); //Door closed
+}
+
+
+void reset()
+{
+  pressed="";//clear pressed password
+  lcd.clear();
+  lcd.setCursor(0,0);
+  lcd.print("Resetting...");
+  delay(500); //displays Resetting for half a second
+}
+
+void incorrect()
+{
+delay(500);
+lcd.clear();
+lcd.setCursor(1,0);
+lcd.print("CODE");
+lcd.setCursor(6,0);
+lcd.print("INCORRECT");
+lcd.setCursor(15,1);
+lcd.println(" ");
+lcd.setCursor(4,1);
+lcd.println("GET AWAY!!!");
+}
