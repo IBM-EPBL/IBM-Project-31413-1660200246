@@ -1,3 +1,4 @@
+//**TEMPERATURE AND HUMIDITY DETECTION**-T.DIVYA**//
 from machine import Pin
 from time import sleep
 import dht 
